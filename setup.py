@@ -26,7 +26,7 @@ setup(
   "Topic :: Software Development :: Libraries :: Python Modules",
  ],
  packages=find_packages(),
- install_requires=[],
+ install_requires=["pyinstaller"],
  entry_points={
   "console_scripts": [
    "ezpyi=ezpyi.__main__:main",
