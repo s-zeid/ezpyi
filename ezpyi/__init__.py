@@ -21,22 +21,22 @@ PE_EXTENSIONS = (".cpl", ".dll", ".drv", ".exe", ".ico", ".ocx", ".scr", ".sys")
 
 
 if platform.system().lower() == "windows":
- windows = True
- python_path = "python" #"C:\\Python27\\python.exe"
- pyinstaller_path = "" #"C:\\Python27\\Scripts"
+ WINDOWS = True
+ PYTHON_PATH = "python" #"C:\\Python27\\python.exe"
+ PYINSTALLER_PATH = "" #"C:\\Python27\\Scripts"
 else:
- windows = False
- python_path = "python"
- pyinstaller_path = ""
+ WINDOWS = False
+ PYTHON_PATH = "python"
+ PYINSTALLER_PATH = ""
 
 
 def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
           icon=None, version=None,
           django=False,
           pyinstaller_path=None, python_path=None, real_name=None):
- global windows
- pyinstaller_path = pyinstaller_path or globals()["pyinstaller_path"]
- python_path = python_path or globals()["python_path"]
+ pyinstaller_path = pyinstaller_path or PYINSTALLER_PATH
+ python_path = python_path or PYTHON_PATH
+ 
  infile = real_infile = os.path.abspath(infile)
  outfile = os.path.abspath(outfile)
  basename = os.path.splitext(os.path.basename(infile))[0]
@@ -63,10 +63,10 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
   basename = "__main__"
  spec = os.path.join(tmpdir, basename + ".spec")
  ret = False
- makespec_cmd = [pyinstaller_script("Makespec"), "--onefile"]
+ makespec_cmd = [pyinstaller_script("Makespec", pyinstaller_path), "--onefile"]
  if tk:
   makespec_cmd += ["--tk"]
- if windows:
+ if WINDOWS:
   if windowed:
    makespec_cmd += ["--windowed"]
   if icon:
@@ -118,9 +118,9 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
  makespec_cmd += ["--specpath="+tmpdir, infile]
  if subprocess.call(makespec_cmd) == 0:
   _patch_spec(spec, rm_django=(not django))
-  #if subprocess.call([pyinstaller_script("Build"), spec]) == 0:
-  if subprocess.call([pyinstaller_script(), spec]) == 0:
-   nametomove = basename + ".exe" if windows else basename
+  #if subprocess.call([pyinstaller_script("Build", pyinstaller_path), spec]) == 0:
+  if subprocess.call([pyinstaller_script("", pyinstaller_path), spec]) == 0:
+   nametomove = basename + ".exe" if WINDOWS else basename
    shutil.move(os.path.join(tmpdir, "dist", nametomove), outfile)
    ret = True
  os.chdir(cwd)
@@ -133,77 +133,20 @@ def _patch_spec(spec, rm_django=True):
   s = f.read()
  excludes = []
  if rm_django:
-  excludes += ["django"]
+  excludes += [b"django"]
  #excludes = ", ".join(["'%s'" % i for i in excludes])
  #s = s.replace("pathex=[", "excludes=[" + excludes + "], pathex=[", 1)
- if s.find("excludes=") < 0:
-  s = s.replace("pathex=", "excludes=[], pathex=")
- s = s.replace("excludes=None", "excludes=[]")
- s = s.replace("excludes=", "excludes=%s+" % repr(excludes))
+ if b"excludes=" not in s:
+  s = s.replace(b"pathex=", b"excludes=[], pathex=")
+ s = s.replace(b"excludes=None", b"excludes=[]")
+ s = s.replace(b"excludes=", b"excludes=[%s]+" % b",".join(b'"%s"'%i for i in excludes))
  with open(spec, "wb") as f:
   f.write(s)
 
 
-def main(argv):
- global pyinstaller_path, python_path, windows
- prog = "ezpyi"
- usage = "Usage: %s [options] script [exefile]" % os.path.basename(prog)
- p = optparse.OptionParser(prog=prog, usage=usage,
-  description="Makes a standalone executable from a Python script using"
-              " PyInstaller.")
- p.add_option("--ezpyi-version", action="store_true",
-  help="show ezpyi's version number and exit")
- p.add_option("--django", "-D", action="store_true", default=False,
-  help="the script represents a Django app.  Defaults to False.")
- p.add_option("--icon", "-i", default=None,
-  help="icon to use for the EXE file.  Can be either filename.ico or"
-       " filename.exe,index.  (Windows only)")
- p.add_option("--output", "-o", default=None, 
-  help="directory to save the resulting file to.  Defaults to the current"
-       " directory.")
- p.add_option("--pyinstaller-path", "-P", default=None, dest="pyinstaller",
-  help="path to PyInstaller.  Defaults to %s." % pyinstaller_path)
- p.add_option("--python-path", "-p", default=None, dest="python",
-  help="path to the Python binary used to run PyInstaller.  Defaults to %s."
-        % pyinstaller_path)
- p.add_option("--real-name", default=None,
-  help="the actual name of the script, e.g. if the input file is a temporary"
-       "file with a random name.")
- p.add_option("--tk", "-t", action="store_true", default=False,
-  help="include TCL/TK in the executable file.")
- p.add_option("--version", "-V", default=None,
-  help="version number to use in the EXE file.  (Windows only)")
- p.add_option("--windowed", "-w", action="store_true", default=False,
-  help="use the Windows subsystem in the EXE file in order to hide the console"
-       " window.  (Windows only)")
- p.add_option("--debug", action="store_true", default=False,
-  help="enable PyInstaller's debugging mechanism in the bundled executable.")
- options, args = p.parse_args(argv[1:])
- if len(args) < 1 or len(args) > 2:
-  p.print_help()
-  return 2
- 
- output = options.output or "."
- pyinstaller_path = options.pyinstaller or pyinstaller_path
- python_path = options.python or python_path
- script = args[0]
- exename = os.path.splitext(script)[0]
- if windows:
-  exename += ".exe"
- exefile = args[1] if len(args) == 2 else exename
- if os.path.isdir(os.path.realpath(exefile)):
-  exefile = os.path.join(exefile, exename)
- if ezpyi(script, exefile, options.tk, options.windowed, options.debug,
-          options.icon, options.version,
-          options.django,
-          options.pyinstaller, options.python, options.real_name) == False:
-  print("building failed!", file=sys.stderr)
-  return 1
-
-
-def pyinstaller_script(name=None):
+def pyinstaller_script(name=None, pyinstaller_path=PYINSTALLER_PATH):
  script = "pyi-" + name.lower() if name else "pyinstaller"
- return os.path.join(pyinstaller_path, script + (".exe" if windows else ""))
+ return os.path.join(pyinstaller_path, script + (".exe" if WINDOWS else ""))
 
 
 if sys.version_info.major < 3:
