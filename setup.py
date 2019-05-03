@@ -3,16 +3,24 @@
 # This file is public domain via CC0:
 # <https://creativecommons.org/publicdomain/zero/1.0/>
 
+import os
 import sys
 
 from setuptools import setup, find_packages
 
 import versioneer
 
+
+with open(os.path.join(os.path.dirname(__file__), "README.md"), "r") as f:
+ long_description = f.read()
+
+
 setup(
  name="ezpyi",
  version=versioneer.get_version(),
  description="A wrapper for PyInstaller that simplifies its usage.",
+ long_description=long_description,
+ long_description_content_type="text/markdown",
  url="https://code.s.zeid.me/ezpyi",
  author="S. Zeid",
  author_email="support+ezpyi@s.zeid.me",
