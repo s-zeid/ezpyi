@@ -52,34 +52,35 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
   pass
  cwd = os.getcwd()
  tmpdir = tempfile.mkdtemp()
- os.chdir(tmpdir)
- if is_zip:
-  zipdir = tempfile.mkdtemp(dir=tmpdir, prefix="zip-contents-")
-  z = zipfile.ZipFile(infile, "r")
-  z.extractall(zipdir)
-  infile = os.path.join(zipdir, "__main__.py")
-  if not os.path.isfile(infile):
-   return False
-  basename = "__main__"
- spec = os.path.join(tmpdir, basename + ".spec")
- ret = False
- makespec_cmd = [pyinstaller_script("Makespec", pyinstaller_path), "--onefile"]
- if tk:
-  makespec_cmd += ["--tk"]
- if WINDOWS:
-  if windowed:
-   makespec_cmd += ["--windowed"]
-  if icon:
-   icon_path = icon
-   if os.path.splitext(icon.rsplit(",", 1)[0])[1].lower() not in PE_EXTENSIONS:
-    icon_path = os.path.join(tmpdir, os.path.basename(icon) + ".ico")
-    shutil.copy(icon, icon_path)
-   makespec_cmd += ["--icon=" + icon_path]
-  if version:
-   version_tuple = (re.sub(r'[^0-9.]', '', version).split(".") + [0, 0, 0, 0])[:4]
-   version_tuple = tuple([int(i) for i in version_tuple])
-   # https://stackoverflow.com/a/14626175
-   version_res = """VSVersionInfo(
+ try:
+  os.chdir(tmpdir)
+  if is_zip:
+   zipdir = tempfile.mkdtemp(dir=tmpdir, prefix="zip-contents-")
+   z = zipfile.ZipFile(infile, "r")
+   z.extractall(zipdir)
+   infile = os.path.join(zipdir, "__main__.py")
+   if not os.path.isfile(infile):
+    return False
+   basename = "__main__"
+  spec = os.path.join(tmpdir, basename + ".spec")
+  ret = False
+  makespec_cmd = [pyinstaller_script("Makespec", pyinstaller_path), "--onefile"]
+  if tk:
+   makespec_cmd += ["--tk"]
+  if WINDOWS:
+   if windowed:
+    makespec_cmd += ["--windowed"]
+   if icon:
+    icon_path = icon
+    if os.path.splitext(icon.rsplit(",", 1)[0])[1].lower() not in PE_EXTENSIONS:
+     icon_path = os.path.join(tmpdir, os.path.basename(icon) + ".ico")
+     shutil.copy(icon, icon_path)
+    makespec_cmd += ["--icon=" + icon_path]
+   if version:
+    version_tuple = (re.sub(r'[^0-9.]', '', version).split(".") + [0, 0, 0, 0])[:4]
+    version_tuple = tuple([int(i) for i in version_tuple])
+    # https://stackoverflow.com/a/14626175
+    version_res = """VSVersionInfo(
   ffi=FixedFileInfo(
     filevers={v_tuple},
     prodvers={v_tuple},
@@ -109,22 +110,23 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
             internal_name=repr(to_unicode(real_basename)),
             original_name=repr(to_unicode(os.path.basename(real_name))))
     #VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
-   version_file = os.path.join(tmpdir, "version.txt")
-   with open(version_file, "wb") as f:
-    f.write(version_res)
-   makespec_cmd += ["--version-file="+version_file]
- if debug:
-  makespec_cmd += ["--debug"]
- makespec_cmd += ["--specpath="+tmpdir, infile]
- if subprocess.call(makespec_cmd) == 0:
-  _patch_spec(spec, rm_django=(not django))
-  #if subprocess.call([pyinstaller_script("Build", pyinstaller_path), spec]) == 0:
-  if subprocess.call([pyinstaller_script("", pyinstaller_path), spec]) == 0:
-   nametomove = basename + ".exe" if WINDOWS else basename
-   shutil.move(os.path.join(tmpdir, "dist", nametomove), outfile)
-   ret = True
- os.chdir(cwd)
- shutil.rmtree(tmpdir)
+    version_file = os.path.join(tmpdir, "version.txt")
+    with open(version_file, "wb") as f:
+     f.write(version_res)
+    makespec_cmd += ["--version-file="+version_file]
+  if debug:
+   makespec_cmd += ["--debug"]
+  makespec_cmd += ["--specpath="+tmpdir, infile]
+  if subprocess.call(makespec_cmd) == 0:
+   _patch_spec(spec, rm_django=(not django))
+   #if subprocess.call([pyinstaller_script("Build", pyinstaller_path), spec]) == 0:
+   if subprocess.call([pyinstaller_script("", pyinstaller_path), spec]) == 0:
+    nametomove = basename + ".exe" if WINDOWS else basename
+    shutil.move(os.path.join(tmpdir, "dist", nametomove), outfile)
+    ret = True
+ finally:
+  os.chdir(cwd)
+  shutil.rmtree(tmpdir)
  return ret
 
 
