@@ -6,6 +6,7 @@ import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -24,18 +25,25 @@ if platform.system().lower() == "windows":
  WINDOWS = True
  PYTHON_PATH = "python" #"C:\\Python27\\python.exe"
  PYINSTALLER_PATH = "" #"C:\\Python27\\Scripts"
+ APPIMAGETOOL_PATH = "appimagetool"
 else:
  WINDOWS = False
  PYTHON_PATH = "python"
  PYINSTALLER_PATH = ""
+ APPIMAGETOOL_PATH = "appimagetool"
 
 
 def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
           icon=None, version=None,
           django=False,
-          pyinstaller_path=None, python_path=None, real_name=None):
+          pyinstaller_path=None, python_path=None, real_name=None,
+          onefile=True, appimage=False, appimagetool_path=None):
  pyinstaller_path = pyinstaller_path or PYINSTALLER_PATH
  python_path = python_path or PYTHON_PATH
+ appimagetool_path = appimagetool_path or APPIMAGETOOL_PATH
+ 
+ if appimage:
+  onefile = False
  
  infile = real_infile = os.path.abspath(infile)
  outfile = os.path.abspath(outfile)
@@ -62,9 +70,11 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
    if not os.path.isfile(infile):
     return False
    basename = "__main__"
-  spec = os.path.join(tmpdir, basename + ".spec")
+  spec_name = basename if onefile else "AppRun"
+  spec = os.path.join(tmpdir, spec_name + ".spec")
   ret = False
-  makespec_cmd = [pyinstaller_script("Makespec", pyinstaller_path), "--onefile"]
+  makespec_cmd = [pyinstaller_script("Makespec", pyinstaller_path)]
+  makespec_cmd += ["--onefile"] if onefile else ["--onedir", "--name=" + spec_name]
   if tk:
    makespec_cmd += ["--tk"]
   if WINDOWS:
@@ -121,9 +131,30 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
    _patch_spec(spec, rm_django=(not django))
    #if subprocess.call([pyinstaller_script("Build", pyinstaller_path), spec]) == 0:
    if subprocess.call([pyinstaller_script("", pyinstaller_path), spec]) == 0:
-    nametomove = basename + ".exe" if WINDOWS else basename
-    shutil.move(os.path.join(tmpdir, "dist", nametomove), outfile)
-    ret = True
+    nametomove = spec_name + ".exe" if WINDOWS else spec_name
+    dist_file = os.path.join(tmpdir, "dist", nametomove)
+    if not onefile:
+     # AppImage dummy files
+     for dummy_file in (".DirIcon", ".icon.png", ".desktop"):
+      with open(os.path.join(dist_file, dummy_file), "w") as f:
+       if dummy_file == ".desktop":
+        f.write("""
+[Desktop Entry]
+Type=Application
+Name=%s
+Categories=
+Exec=false
+Icon=.icon
+Terminal=true
+""".lstrip() % basename)
+    if appimage:
+     appimagetool_cmd = [appimagetool_path, "--no-appstream", dist_file, outfile]
+     appimagetool_env = os.environ.copy().update({"ARCH": platform.machine()})
+     if subprocess.call(appimagetool_cmd, env=appimagetool_env) == 0:
+      ret = True
+    else:
+     shutil.move(dist_file, outfile)
+     ret = True
  finally:
   os.chdir(cwd)
   shutil.rmtree(tmpdir)

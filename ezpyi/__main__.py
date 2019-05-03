@@ -5,6 +5,7 @@ import optparse
 import os
 import sys
 
+from . import __version__
 from . import PYINSTALLER_PATH, PYTHON_PATH, WINDOWS
 from . import ezpyi
 
@@ -20,8 +21,12 @@ def main(argv=None):
               " PyInstaller.")
  p.add_option("--ezpyi-version", action="store_true",
   help="show ezpyi's version number and exit")
- p.add_option("--django", "-D", action="store_true", default=False,
-  help="the script represents a Django app.  Defaults to False.")
+ p.add_option("--onedir", "-D", action="store_true", default=False,
+  help="make an AppImage-compatible directory instead of an executable file"
+       " (the executable will be called AppRun, or AppRun.exe on Windows)")
+ p.add_option("--appimage", "-A", action="store_true", default=False,
+  help="make an AppImage (appimagetool must be on $PATH;"
+       " desktop integration and AppStream are not supported)")
  p.add_option("--icon", "-i", default=None,
   help="icon to use for the EXE file.  Can be either filename.ico or"
        " filename.exe,index.  (Windows only)")
@@ -43,10 +48,16 @@ def main(argv=None):
  p.add_option("--windowed", "-w", action="store_true", default=False,
   help="use the Windows subsystem in the EXE file in order to hide the console"
        " window.  (Windows only)")
+ p.add_option("--django", action="store_true", default=False,
+  help="the script represents a Django app.  Defaults to False.")
  p.add_option("--debug", action="store_true", default=False,
   help="enable PyInstaller's debugging mechanism in the bundled executable.")
  options, args = p.parse_args(argv[1:])
- if len(args) < 1 or len(args) > 2:
+ 
+ if options.ezpyi_version:
+  print(__version__)
+  return 0
+ elif len(args) < 1 or len(args) > 2:
   p.print_help()
   return 2
  
@@ -61,7 +72,8 @@ def main(argv=None):
  if ezpyi(script, exefile, options.tk, options.windowed, options.debug,
           options.icon, options.version,
           options.django,
-          options.pyinstaller, options.python, options.real_name) == False:
+          options.pyinstaller, options.python, options.real_name,
+          not options.directory, options.appimage) == False:
   print("building failed!", file=sys.stderr)
   return 1
 
