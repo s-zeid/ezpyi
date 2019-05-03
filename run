@@ -1,0 +1,5 @@
+#!/bin/sh
+
+dir=$(cd "$(dirname -- "$0")" && pwd)
+
+PYTHONPATH="$dir:$PYTHONPATH" exec python3 -m ezpyi "$@"
