@@ -1,7 +1,7 @@
 ezpyi
 A wrapper for PyInstaller that simplifies its usage.
 
-Copyright (C) 2008?-2017 Scott Zeid
+Copyright (C) 2008?-2019 S. Zeid
 https://code.s.zeid.me/ezpyi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

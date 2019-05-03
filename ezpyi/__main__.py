@@ -35,7 +35,7 @@ def main(argv=None):
         % PYTHON_PATH)
  p.add_option("--real-name", default=None,
   help="the actual name of the script, e.g. if the input file is a temporary"
-       "file with a random name.")
+       " file with a random name.")
  p.add_option("--tk", "-t", action="store_true", default=False,
   help="include TCL/TK in the executable file.")
  p.add_option("--version", "-V", default=None,

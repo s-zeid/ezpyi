@@ -14,7 +14,7 @@ setup(
  version=versioneer.get_version(),
  description="A wrapper for PyInstaller that simplifies its usage.",
  url="https://code.s.zeid.me/ezpyi",
- author="Scott Zeid",
+ author="S. Zeid",
  author_email="support+ezpyi@s.zeid.me",
  license="X11 License:  https://tldrlegal.com/license/x11-license",
  classifiers=[
