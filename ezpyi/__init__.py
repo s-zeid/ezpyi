@@ -33,17 +33,21 @@ else:
  APPIMAGETOOL_PATH = "appimagetool"
 
 
-def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
-          icon=None, version=None,
+def ezpyi(infile, outfile, windowed=False, debug=False,
+          icon=None, exe_version=None,
           django=False,
           pyinstaller_path=None, python_path=None, real_name=None,
-          onefile=True, appimage=False, appimagetool_path=None):
+          onedir=False, appimage=False, appimagetool_path=None,
+          makespec_args=None):
  pyinstaller_path = pyinstaller_path or PYINSTALLER_PATH
  python_path = python_path or PYTHON_PATH
  appimagetool_path = appimagetool_path or APPIMAGETOOL_PATH
  
  if appimage:
-  onefile = False
+  onedir = True
+ 
+ if not makespec_args:
+  makespec_args = []
  
  infile = real_infile = os.path.abspath(infile)
  outfile = os.path.abspath(outfile)
@@ -70,13 +74,11 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
    if not os.path.isfile(infile):
     return False
    basename = "__main__"
-  spec_name = basename if onefile else "AppRun"
+  spec_name = "AppRun" if onedir else basename
   spec = os.path.join(tmpdir, spec_name + ".spec")
   ret = False
   makespec_cmd = [pyinstaller_script("Makespec", pyinstaller_path)]
-  makespec_cmd += ["--onefile"] if onefile else ["--onedir", "--name=" + spec_name]
-  if tk:
-   makespec_cmd += ["--tk"]
+  makespec_cmd += ["--onedir", "--name=" + spec_name] if onedir else ["--onefile"]
   if WINDOWS:
    if windowed:
     makespec_cmd += ["--windowed"]
@@ -86,8 +88,8 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
      icon_path = os.path.join(tmpdir, os.path.basename(icon) + ".ico")
      shutil.copy(icon, icon_path)
     makespec_cmd += ["--icon=" + icon_path]
-   if version:
-    version_tuple = (re.sub(r'[^0-9.]', '', version).split(".") + [0, 0, 0, 0])[:4]
+   if exe_version:
+    version_tuple = (re.sub(r'[^0-9.]', '', exe_version).split(".") + [0, 0, 0, 0])[:4]
     version_tuple = tuple([int(i) for i in version_tuple])
     # https://stackoverflow.com/a/14626175
     version_res = """VSVersionInfo(
@@ -116,7 +118,7 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
         StringStruct(u'ProductVersion', {v_unicode})])
       ]), 
   ]
-)""".format(v_tuple=repr(version_tuple), v_unicode=repr(to_unicode(version)),
+)""".format(v_tuple=repr(version_tuple), v_unicode=repr(to_unicode(exe_version)),
             internal_name=repr(to_unicode(real_basename)),
             original_name=repr(to_unicode(os.path.basename(real_name))))
     #VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
@@ -127,13 +129,14 @@ def ezpyi(infile, outfile, tk=False, windowed=False, debug=False,
   if debug:
    makespec_cmd += ["--debug"]
   makespec_cmd += ["--specpath="+tmpdir, infile]
+  makespec_cmd += makespec_args
   if subprocess.call(makespec_cmd) == 0:
    _patch_spec(spec, rm_django=(not django))
    #if subprocess.call([pyinstaller_script("Build", pyinstaller_path), spec]) == 0:
    if subprocess.call([pyinstaller_script("", pyinstaller_path), spec]) == 0:
     nametomove = spec_name + ".exe" if WINDOWS else spec_name
     dist_file = os.path.join(tmpdir, "dist", nametomove)
-    if not onefile:
+    if onedir:
      # AppImage dummy files
      for dummy_file in (".DirIcon", ".icon.png", ".desktop"):
       with open(os.path.join(dist_file, dummy_file), "w") as f:
@@ -177,7 +180,10 @@ def _patch_spec(spec, rm_django=True):
   f.write(s)
 
 
-def pyinstaller_script(name=None, pyinstaller_path=PYINSTALLER_PATH):
+def pyinstaller_script(name=None, pyinstaller_path=None):
+ if pyinstaller_path is None:
+  pyinstaller_path = PYINSTALLER_PATH
+ 
  script = "pyi-" + name.lower() if name else "pyinstaller"
  return os.path.join(pyinstaller_path, script + (".exe" if WINDOWS else ""))
 

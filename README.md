@@ -46,6 +46,10 @@ desktop integration and AppStream are not supported by ezpyi.  If you need
 these features, use `-D`, modify the output directory, and manually build
 the AppImage.)
 
+To pass arguments to `pyi-makespec`, use `-M` or `--makespec-args`.  All
+remaining arguments will be passed to `pyi-makespec`.  If there are no
+remaining arguments, then `pyi-makespec`'s help text will be printed.
+
 For other options, run `ezpyi -h`.
 
 
